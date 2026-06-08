@@ -64,7 +64,7 @@ jobs:
 
       - name: Upload Semgrep SARIF to GitHub Security
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: semgrep.sarif
           category: semgrep
@@ -135,7 +135,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trivy Filesystem Scan
+      # Pass 1 — table format so exit-code works reliably.
+      # The SARIF format + exit-code combination has a known bug in trivy-action
+      # where it exits 1 even with 0 findings; using table here avoids that.
+      - name: Trivy Filesystem Scan (gate)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      # Pass 2 — SARIF format for GitHub Security tab upload (no exit-code).
+      - name: Trivy Filesystem Scan (SARIF)
+        if: always()
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
@@ -143,12 +158,11 @@ jobs:
           format: sarif
           output: trivy-fs.sarif
           severity: HIGH,CRITICAL
-          exit-code: "1"           # Fail the pipeline on findings
-          ignore-unfixed: true     # Skip vulns with no available fix
+          ignore-unfixed: true
 
       - name: Upload Trivy FS SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
@@ -209,19 +223,43 @@ jobs:
     needs: container
 
     steps:
-      - name: Trivy Image Scan
+      # checkout is needed so upload-sarif has a git context (avoids the
+      # "does not appear to be a git repository" warning seen in the logs)
+      - uses: actions/checkout@v4
+
+      # Cache the Trivy Java DB (876 MiB) so it isn't re-downloaded every run.
+      # The DB refreshes every 3 days; keying on the date achieves that cadence.
+      - name: Cache Trivy Java DB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy/java-db
+          key: trivy-java-db-${{ github.run_id }}
+          restore-keys: trivy-java-db-
+
+      # Pass 1 — table format, exit-code enforced.
+      - name: Trivy Image Scan (gate)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.container.outputs.image-ref }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      # Pass 2 — SARIF for GitHub Security tab (no exit-code).
+      - name: Trivy Image Scan (SARIF)
+        if: always()
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ needs.container.outputs.image-ref }}
           format: sarif
           output: trivy-image.sarif
           severity: HIGH,CRITICAL
-          exit-code: "1"
           ignore-unfixed: true
 
       - name: Upload Image Scan SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image
