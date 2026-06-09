@@ -6,7 +6,7 @@
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 # eclipse-temurin:17-jre is the recommended OpenJDK base maintained by Adoptium.
 # Using the -jre variant (not -jdk) minimises attack surface.
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:17.0.1_12-jre-focal
 
 # Run as a non-root user — required by many Kubernetes PodSecurityStandards.
 RUN groupadd --gid 10001 appgroup \
