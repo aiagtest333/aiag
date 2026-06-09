@@ -3,6 +3,6 @@ package com.demo;
 public class App {
     public static void main(String[] args) {
         System.out.println("DevSecOps Pipeline Demo");
-        String s = "https://hooks.slack.com/services/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";
+        String s = "sk_test_51TgN0W1jz69YIAV7sYdHfvfuW8A1wF730WS9qxE3KY5Pxs6H4JFrIN6Uox5KBHAsAUl26ygfL5KACscV0gRNApNL00xoZhF9Fp";
     }
 }
